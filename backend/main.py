@@ -1,14 +1,17 @@
-import asyncio
+import logging
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase, sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, Integer, String
+from sqlalchemy import select
 import strawberry
 from strawberry.fastapi import GraphQLRouter
 from models.base import Base
 
 from api.routes import user
+from api.routes import room
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = FastAPI()
 
@@ -56,7 +59,7 @@ graphql_app = GraphQLRouter(schema, context_getter=get_context)
 app.include_router(graphql_app, prefix="/graphql")
 
 app.include_router(user.router, prefix="/user")
-
+app.include_router(room.router, prefix="/room")
 
 @app.get("/")
 async def root(db: AsyncSession = Depends(get_db)):

@@ -10,6 +10,7 @@ from models.user import User
 from ..dependencies import get_db, verify_token
 
 import jwt
+import logging
 
 router = APIRouter()
 
@@ -31,6 +32,7 @@ async def create_user(userCreate: UserCreate, db: AsyncSession = Depends(get_db)
     user = User(name=userCreate.name, messages=[])
     db.add(user)
     await db.commit()
+    logging.info(f"User {user.name} added")
 
     exp = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode = dict(sub=str(user.id), name=user.name, exp=exp)
@@ -40,8 +42,7 @@ async def create_user(userCreate: UserCreate, db: AsyncSession = Depends(get_db)
     return UserCreateResponse(access_token=access_token, token_expire_in=token_expire_in, name=user.name, id=user.id)
 
 @router.get("/me", response_model=UserResponse)
-async def me(payload = Depends(verify_token), db: AsyncSession = Depends(get_db)):
-    user_id: str = payload.get("sub")
+async def me(user_id = Depends(verify_token), db: AsyncSession = Depends(get_db)):
     user = await db.get(User, int(user_id)) if user_id.isdigit() else None
 
     if user is None:
