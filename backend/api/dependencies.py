@@ -20,10 +20,13 @@ def verify_token(authorization: str = Header(...)) -> str:
         if not sub:
             raise HTTPException(status_code=401, detail="Invalid token - Missing sub")
 
+        if not sub.isdigit():
+            raise HTTPException(status_code=401, detail="Invalid token - Invalid sub")
+
         if payload.get("exp") < datetime.now().timestamp():
             raise HTTPException(status_code=401, detail="Invalid token - Expired token")
 
-        return sub
+        return int(sub)
     except jwt.InvalidTokenError as e:
         print("Token Error", e)
         raise HTTPException(status_code=401, detail="Invalid token")
