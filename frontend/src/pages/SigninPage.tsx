@@ -1,16 +1,30 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
-interface NameModalProps {
+interface SigninPageProps {
   onSubmit: (name: string) => void;
 }
 
-const NameModal: React.FC<NameModalProps> = ({ onSubmit }) => {
+const SigninPage: React.FC<SigninPageProps> = ({ onSubmit }) => {
   const [name, setName] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      onSubmit(name);
+      try {
+        const response = await axios.post(
+          `${import.meta.env.VITE_API_URL}/user/`,
+          {
+            name,
+          }
+        );
+        const accessToken = response.data.access_token;
+        sessionStorage.setItem("access_token", accessToken);
+        console.log(accessToken);
+        onSubmit(name);
+      } catch (error) {
+        console.error("Error submitting name:", error);
+      }
     }
   };
 
@@ -40,4 +54,4 @@ const NameModal: React.FC<NameModalProps> = ({ onSubmit }) => {
   );
 };
 
-export default NameModal;
+export default SigninPage;
