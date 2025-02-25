@@ -1,28 +1,34 @@
-import React, { useState } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
-import SigninPage from "./pages/SigninPage";
-import RoomsPage from "./pages/RoomsPage";
-import "./App.css";
+import React from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
+import SigninPage from './pages/SigninPage';
+import RoomsPage from './pages/RoomsPage';
+import './App.css';
+import RoomDetailPage from './pages/RoomDetailPage';
+import { QueryClient, QueryClientProvider } from 'react-query';
 
 const App: React.FC = () => {
-  const [name, setName] = useState<string | null>(null);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
+    const queryClient = new QueryClient();
 
-  const handleNameSubmit = (submittedName: string) => {
-    setName(submittedName);
-    navigate("/rooms");
-  };
+    const handleNameSubmit = () => {
+        navigate('/rooms');
+    };
 
-  return (
-    <div className="App">
-      {!name && <SigninPage onSubmit={handleNameSubmit} />}
-      {name && <h1 className="text-3xl">Welcome, {name}!</h1>}
-      <Routes>
-        <Route path="/rooms" element={<RoomsPage />} />
-        {/* ...other routes... */}
-      </Routes>
-    </div>
-  );
+    return (
+        <QueryClientProvider client={queryClient}>
+            <div className="App">
+                <Routes>
+                    <Route path="/rooms" element={<RoomsPage />} />
+                    <Route path="/room/:roomId" element={<RoomDetailPage />} />
+                    <Route
+                        path="/"
+                        element={<SigninPage onSubmit={handleNameSubmit} />}
+                    />
+                    {/* ...other routes... */}
+                </Routes>
+            </div>
+        </QueryClientProvider>
+    );
 };
 
 export default App;

@@ -1,0 +1,23 @@
+
+subscription MessageCreated($roomId: String!) {
+    messageCreated(roomId: $roomId) {
+        id
+        content
+        sender {
+            id
+            name
+        }
+        createdAt
+    }
+}
+
+
+subscription UserEvent($roomId: String!) {
+    userEvent(roomId: $roomId) {
+        userAction
+        user {
+            id,
+            name
+        }
+    }
+}

@@ -1,77 +1,94 @@
 import logging
-from fastapi import FastAPI, Depends
+from typing import AsyncGenerator
+
+import redis.asyncio as redis
+import strawberry
+from fastapi import Depends, FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-import strawberry
 from strawberry.fastapi import GraphQLRouter
+from strawberry.subscriptions import GRAPHQL_TRANSPORT_WS_PROTOCOL, GRAPHQL_WS_PROTOCOL
+
+from api.graphql.mutations import Mutation
+from api.graphql.queries import Query
+from api.graphql.subscriptions import Subscription
+from api.routes import room, user
+from config import settings
+from db.session import async_session_maker
 from models.base import Base
 
-from api.routes import user
-from api.routes import room
-
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+redis_client = redis.Redis(
+    host=settings.redis_host, port=settings.redis_port, decode_responses=True
+)
 
 app = FastAPI()
 
-# define the GQL type
-@strawberry.type
-class UserType:
-    id: int
-    name: str
-    age: int
-
-# define the query
-@strawberry.type
-class Query:
-    @strawberry.field
-    async def get_user_by_id(self, info: strawberry.Info, user_id: int) -> UserType:
-        db: AsyncSession = info.context['session']
-        user = await db.get(User, user_id)
-        return UserType(id=1, name=user.name, age=user.age)
 
 # Dependency to get the database session (required by FastApi)
-async def get_db() -> AsyncSession:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:
         yield session
 
+
 # Custom FastApi context
 class Context:
-    def __init__(self, session: AsyncSession):
+    def __init__(
+        self, session: AsyncSession, access_token: str, redis_client: redis.Redis
+    ):
         self.session = session
+        self.access_token = access_token
+        self.redis_client = redis_client
+
 
 # Context dependency function
-async def get_context(session: AsyncSession = Depends(get_db)) -> Context:
-    return {"session": session}
+async def get_context(
+    request: Request = None,
+    websocket: WebSocket = None,
+    session: AsyncSession = Depends(get_db),
+) -> Context:
+    context = {
+        "session": session,
+        "redis_client": redis_client,
+    }
+
+    if request:
+        context["access_token"] = request.headers.get("Authorization", "")
+    elif websocket:
+        context["access_token"] = websocket.headers.get("Authorization", "")
+
+    return context
+
 
 # Enable CORS if needed
+origins = [
+    "http://localhost:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-schema = strawberry.Schema(query=Query)
-graphql_app = GraphQLRouter(schema, context_getter=get_context)
+schema = strawberry.Schema(query=Query, mutation=Mutation, subscription=Subscription)
+graphql_app = GraphQLRouter(
+    schema,
+    subscription_protocols=[GRAPHQL_TRANSPORT_WS_PROTOCOL, GRAPHQL_WS_PROTOCOL],
+    context_getter=get_context,
+)
 app.include_router(graphql_app, prefix="/graphql")
 
 app.include_router(user.router, prefix="/user")
 app.include_router(room.router, prefix="/room")
 
-@app.get("/")
-async def root(db: AsyncSession = Depends(get_db)):
-    user = User(id=2, name="Second user", age=100)
-    db.add(user)
-    await db.commit()
 
-    return { "message": "A new user added" }
-
-@app.get("/users")
-async def users(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User))
-    users = result.scalars().all()
-
-    return { "users": users }
+@app.get("/healthy")
+async def health(db: AsyncSession = Depends(get_db)) -> str:
+    return "OK"

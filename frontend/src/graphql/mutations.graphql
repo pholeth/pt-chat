@@ -1,0 +1,23 @@
+mutation CreateMessage($roomId: ID!, $content: String!) {
+    createMessage(roomId: $roomId, content: $content) {
+        id
+        content
+        room {
+            id
+        }
+        createdAt
+    }
+}
+
+mutation JoinRoom($roomId: ID!) {
+    joinRoom(roomId: $roomId) {
+        success
+    }
+}
+
+mutation LeaveRoom($roomId: ID!) {
+    leaveRoom(roomId: $roomId) {
+        success
+    }
+}
+

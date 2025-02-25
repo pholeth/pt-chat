@@ -1,17 +1,21 @@
 from datetime import datetime
-import json
-from fastapi import HTTPException, Header
+from typing import AsyncGenerator
+
 import jwt
+from fastapi import Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from config import settings
 from consts import ALGORITHM
 from db.session import async_session_maker
 
-async def get_db() -> AsyncSession:
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:
         yield session
 
-def verify_token(authorization: str = Header(...)) -> str:
+
+def verify_token(authorization: str = Header(...)) -> int:
     try:
         _, access_token = authorization.split(" ")
         payload = jwt.decode(access_token, settings.secret_key, algorithms=[ALGORITHM])
@@ -29,4 +33,4 @@ def verify_token(authorization: str = Header(...)) -> str:
         return int(sub)
     except jwt.InvalidTokenError as e:
         print("Token Error", e)
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="Invalid token") from e

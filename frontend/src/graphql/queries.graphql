@@ -1,0 +1,18 @@
+query GetMessagesByRoom($roomId: ID!) {
+    getMessagesByRoom(roomId: $roomId) {
+        id
+        content
+        sender {
+            id
+            name
+        }
+        createdAt
+    }
+}
+
+query GetRoomUsers($roomId: ID!) {
+    getRoomUsers(roomId: $roomId) {
+        id
+        name
+    }
+}
