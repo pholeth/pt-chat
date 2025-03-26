@@ -100,7 +100,6 @@ async def test_create_room(async_client: AsyncClient, session: AsyncSession):
 async def test_list_rooms(async_client: AsyncClient, session: AsyncSession):
     response = await req_create_user("TestUser", async_client)
     access_token = response["access_token"]
-    user_id = response["id"]
     headers = {"Authorization": f"Bearer {access_token}"}
 
     await async_client.post("/room/", json=dict(name="MyRoom1"), headers=headers)
